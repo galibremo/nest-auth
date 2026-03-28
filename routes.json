@@ -1,12 +1,18 @@
 {
-  "generatedAt": "2026-03-27T12:59:05.583Z",
-  "totalRoutes": 2,
+  "generatedAt": "2026-03-28T08:13:44.638Z",
+  "totalRoutes": 3,
   "routes": [
     {
       "path": "/",
       "method": "GET",
       "controller": "AppController",
       "handler": "getHello"
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "controller": "AuthController",
+      "handler": "login"
     },
     {
       "path": "/auth/register",
@@ -20,6 +26,7 @@
       "/"
     ],
     "POST": [
+      "/auth/login",
       "/auth/register"
     ]
   }

@@ -19,7 +19,7 @@ import { validateString } from './validators/commonRules';
 
 const secretSchema = z.object({
 	AUTH_SECRET: validateString('AUTH_SECRET'),
-	// CRYPTO_SECRET: validateString('CRYPTO_SECRET'),
+	CRYPTO_SECRET: validateString('CRYPTO_SECRET'),
 	// CSRF_SECRET: validateString('CSRF_SECRET'),
 });
 

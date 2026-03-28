@@ -11,7 +11,6 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { timestamps } from '../../database/helpers';
-import { tokenTypeEnum } from './enum.model';
 
 export const users = pgTable(
 	'users',
@@ -79,25 +78,5 @@ export const accounts = pgTable(
 		index('accounts_user_id_idx').on(table.userId),
 		index('accounts_provider_id_idx').on(table.providerId),
 		index('accounts_access_token_expires_at_idx').on(table.accessTokenExpiresAt),
-	],
-);
-
-export const verifications = pgTable(
-	'verifications',
-	{
-		id: serial('id').primaryKey(),
-		identifier: text('identifier').notNull(),
-		value: text('value').notNull(),
-		tokenType: tokenTypeEnum('token_type').notNull(),
-		expiresAt: timestamp('expires_at').notNull(),
-		...timestamps,
-	},
-	table => [
-		uniqueIndex('verifications_identifier_token_type_idx').on(table.identifier, table.tokenType),
-		index('verifications_identifier_idx').on(table.identifier),
-		index('verifications_value_idx').on(table.value),
-		index('verifications_token_type_idx').on(table.tokenType),
-		index('verifications_expires_at_idx').on(table.expiresAt),
-		index('verifications_identifier_value_idx').on(table.identifier, table.value),
 	],
 );

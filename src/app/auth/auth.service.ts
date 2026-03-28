@@ -1,17 +1,35 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres/driver';
+import { sessionTimeout } from '../../core/constants';
+import { CryptoService } from '../../core/crypto/crypto.service';
 import { DATABASE_CONNECTION } from '../../database/connection';
 import schema from '../../database/schema';
 import DrizzleService from '../../database/service';
 import { CreateUser, UserWithoutPassword } from './@types/auth.types';
+import { LoginDto } from './auth.schema';
+import { AuthSession } from './auth.session';
+
+interface UserInformation {
+	userId: number;
+	email: string;
+	userAgent: string;
+	ipAddress: string;
+	deviceName: string;
+	deviceType: string;
+	expirationTime?: number;
+}
 
 @Injectable()
 export class AuthService extends DrizzleService {
 	constructor(
 		@Inject(DATABASE_CONNECTION)
 		db: NodePgDatabase<typeof schema>,
+		private readonly jwtService: JwtService,
+		private readonly authSession: AuthSession,
+		private readonly cryptoService: CryptoService,
 	) {
 		super(db);
 	}
@@ -47,5 +65,46 @@ export class AuthService extends DrizzleService {
 		});
 
 		return newUser;
+	}
+
+	async validateUser(data: LoginDto): Promise<UserWithoutPassword> {
+		const checkUserByEmail = await this.getDb().query.users.findFirst({
+			where: eq(schema.users.email, data.email),
+		});
+		if (!checkUserByEmail) throw new BadRequestException('User with this email does not exist');
+
+		if (!checkUserByEmail.password)
+			throw new UnauthorizedException('User does not have a password set');
+
+		const isPasswordValid = await bcrypt.compare(data.password, checkUserByEmail.password);
+
+		if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { password, ...userWithoutPassword } = checkUserByEmail;
+
+		return userWithoutPassword;
+	}
+
+	async generateAccessToken(userInfo: UserInformation): Promise<string> {
+		const sub = this.cryptoService.encrypt(userInfo.userId.toString());
+		const email = this.cryptoService.encrypt(userInfo.email);
+
+		const payload = { sub, email };
+		const token = this.jwtService.sign(payload);
+
+		const sessionToken = await this.authSession.createSession({
+			userId: userInfo.userId,
+			expiresAt: userInfo.expirationTime
+				? new Date(userInfo.expirationTime)
+				: new Date(Date.now() + sessionTimeout), // default 7 days
+			userAgent: userInfo.userAgent,
+			ipAddress: userInfo.ipAddress,
+			deviceName: userInfo.deviceName,
+			deviceType: userInfo.deviceType,
+			token,
+		});
+
+		return sessionToken;
 	}
 }
