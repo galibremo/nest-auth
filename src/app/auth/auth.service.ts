@@ -107,4 +107,16 @@ export class AuthService extends DrizzleService {
 
 		return sessionToken;
 	}
+
+	async findUserById(id: number): Promise<UserWithoutPassword> {
+		const user = await this.getDb().query.users.findFirst({
+			where: eq(schema.users.id, id),
+		});
+
+		if (!user) throw new UnauthorizedException('User not found');
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { password, ...userWithoutPassword } = user;
+		return userWithoutPassword;
+	}
 }

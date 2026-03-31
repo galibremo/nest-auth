@@ -1,4 +1,12 @@
-import { BadRequestException, Body, Controller, HttpStatus, Post, Request } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	HttpStatus,
+	Post,
+	Request,
+	UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request as ExpressRequest } from 'express';
 import { ApiResponse, createApiResponse } from '../../core/api-response.interceptor';
@@ -6,6 +14,7 @@ import AppHelpers from '../../core/app.helper';
 import { sessionTimeout } from '../../core/constants';
 import { EnvType } from '../../core/env';
 import { CreateUser, UserWithoutPasswordResponse } from './@types/auth.types';
+import { JwtAuthGuard } from './auth.guard';
 import { type LoginDto, loginSchema, type RegisterDto, registerSchema } from './auth.schema';
 import { AuthService } from './auth.service';
 import { AuthSession } from './auth.session';
@@ -85,5 +94,29 @@ export class AuthController {
 		});
 
 		return createApiResponse(HttpStatus.OK, 'Login successful', user);
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@Post('logout')
+	async logout(@Request() request: ExpressRequest): Promise<ApiResponse<null>> {
+		const userId = request.user?.id;
+		const sessionToken = request.cookies['access-token'] as string | undefined;
+
+		if (!userId || !sessionToken) throw new BadRequestException('No active session found');
+
+		await this.authSession.revokeSession(userId, sessionToken);
+
+		const cookieConfig = AppHelpers.sameSiteCookieConfig(this.configService);
+
+		// Set cookie
+		request.res?.clearCookie('access-token', {
+			httpOnly: true,
+			secure: cookieConfig.secure,
+			sameSite: cookieConfig.sameSite,
+			domain: cookieConfig.domain,
+			maxAge: sessionTimeout,
+		});
+
+		return createApiResponse(HttpStatus.OK, 'Logout successful', null);
 	}
 }
