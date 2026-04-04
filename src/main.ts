@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { ApiResponseInterceptor } from './core/api-response.interceptor';
 import { EnvType } from './core/env';
@@ -33,6 +34,9 @@ async function bootstrap() {
 		allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token', 'ngrok-skip-browser-warning'],
 		maxAge: 3600,
 	});
+
+	// Enable cookie parsing for CSRF tokens
+	app.use(cookieParser());
 
 	// Apply global exception filter for custom error responses
 	app.useGlobalFilters(new HttpExceptionFilter());
